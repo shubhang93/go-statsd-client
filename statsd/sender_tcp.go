@@ -57,7 +57,7 @@ func NewTCPSender(addr string, disableNagle bool) (Sender, error) {
 		return nil, err
 	}
 
-	c, err := net.DialTCP(addr, nil, ra)
+	c, err := net.DialTCP("tcp", nil, ra)
 	if err != nil {
 		return nil, err
 	}
