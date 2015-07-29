@@ -3,7 +3,6 @@ package statsd
 import (
 	"bufio"
 	"bytes"
-	"log"
 	"net"
 	"reflect"
 	"testing"
@@ -47,7 +46,6 @@ func TestTCPClient(t *testing.T) {
 					if err != nil {
 						return
 					}
-					log.Println("got line!", line)
 					respChan <- line
 				}
 			}(c)
@@ -69,7 +67,6 @@ func TestTCPClient(t *testing.T) {
 			t.Fatal(errInter.(error))
 		}
 
-		log.Println("here!")
 		data := <-respChan
 		data = bytes.TrimRight(data, "\n")
 		if bytes.Equal(data, []byte(tt.Expected)) != true {
