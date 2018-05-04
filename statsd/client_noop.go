@@ -46,6 +46,24 @@ func (s *NoopClient) GaugeDelta(stat string, value int64, rate float32) error {
 	return nil
 }
 
+// GaugeFloat submits/Updates a statsd gauge type.
+// Note: May not be supported by all servers.
+// stat is a string name for the metric.
+// value is the integer value.
+// rate is the sample rate (0.0 to 1.0).
+func (s *NoopClient) GaugeFloat(stat string, value float64, rate float32) error {
+	return nil
+}
+
+// GaugeFloatDelta submits a delta to a statsd gauge.
+// Note: May not be supported by all servers.
+// stat is the string name for the metric.
+// value is the (positive or negative) change.
+// rate is the sample rate (0.0 to 1.0).
+func (s *NoopClient) GaugeFloatDelta(stat string, value float64, rate float32) error {
+	return nil
+}
+
 // Timing submits a statsd timing type.
 // stat is a string name for the metric.
 // delta is the time duration value in milliseconds

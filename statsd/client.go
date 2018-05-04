@@ -20,6 +20,8 @@ type StatSender interface {
 	Dec(string, int64, float32) error
 	Gauge(string, int64, float32) error
 	GaugeDelta(string, int64, float32) error
+	GaugeFloat(string, float64, float32) error
+	GaugeFloatDelta(string, float64, float32) error
 	Timing(string, int64, float32) error
 	TimingDuration(string, time.Duration, float32) error
 	Set(string, string, float32) error
@@ -115,6 +117,37 @@ func (s *Client) Gauge(stat string, value int64, rate float32) error {
 // value is the (positive or negative) change.
 // rate is the sample rate (0.0 to 1.0).
 func (s *Client) GaugeDelta(stat string, value int64, rate float32) error {
+	if !s.includeStat(rate) {
+		return nil
+	}
+
+	// if negative, the submit formatter will prefix with a - already
+	// so only special case the positive value
+	if value >= 0 {
+		return s.submit(stat, "+", value, "|g", rate)
+	}
+	return s.submit(stat, "", value, "|g", rate)
+}
+
+// GaugeFloat submits/updates a float statsd gauge type.
+// Note: May not be supported by all servers.
+// stat is a string name for the metric.
+// value is the float64 value.
+// rate is the sample rate (0.0 to 1.0).
+func (s *Client) GaugeFloat(stat string, value float64, rate float32) error {
+	if !s.includeStat(rate) {
+		return nil
+	}
+
+	return s.submit(stat, "", value, "|g", rate)
+}
+
+// GaugeFloatDelta submits a float delta to a statsd gauge.
+// Note: May not be supported by all servers.
+// stat is the string name for the metric.
+// value is the (positive or negative) change.
+// rate is the sample rate (0.0 to 1.0).
+func (s *Client) GaugeFloatDelta(stat string, value float64, rate float32) error {
 	if !s.includeStat(rate) {
 		return nil
 	}

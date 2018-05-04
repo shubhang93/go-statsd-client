@@ -32,8 +32,12 @@ var statsdPacketTests = []struct {
 	{"test", "SetInt", "intset", int64(1), 1.0, "test.intset:1|s"},
 	{"test", "GaugeDelta", "gauge", int64(1), 1.0, "test.gauge:+1|g"},
 	{"test", "GaugeDelta", "gauge", int64(-1), 1.0, "test.gauge:-1|g"},
+	{"test", "GaugeFloatDelta", "gauge", float64(1.1), 1.0, "test.gauge:+1.1|g"},
+	{"test", "GaugeFloatDelta", "gauge", float64(-1.1), 1.0, "test.gauge:-1.1|g"},
 
 	{"", "Gauge", "gauge", int64(1), 1.0, "gauge:1|g"},
+	{"", "GaugeFloat", "gauge", float64(1.1), 1.0, "gauge:1.1|g"},
+	{"", "GaugeFloat", "gauge", float64(1.0), 1.0, "gauge:1|g"},
 	{"", "Inc", "count", int64(1), 0.999999, "count:1|c|@0.999999"},
 	{"", "Inc", "count", int64(1), 1.0, "count:1|c"},
 	{"", "Dec", "count", int64(1), 1.0, "count:-1|c"},
@@ -187,7 +191,7 @@ func ExampleClient_noop() {
 	// make a NoopClient instead
 	if err != nil {
 		log.Println("Remote endpoint did not resolve. Disabling stats", err)
-		client, err = NewNoopClient()
+		client, _ = NewNoopClient()
 	}
 	// make sure to clean up
 	defer client.Close()
