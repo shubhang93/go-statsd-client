@@ -5,6 +5,7 @@
 package statsd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -24,9 +25,9 @@ type ResolvingSimpleSender struct {
 	// interval time
 	reresolveInterval time.Duration
 	// lifecycle
-	mx       sync.RWMutex
-	doneChan chan struct{}
-	running  bool
+	mx      sync.RWMutex
+	cancel  context.CancelFunc
+	running bool
 }
 
 // Send sends the data to the server endpoint.
@@ -63,11 +64,9 @@ func (s *ResolvingSimpleSender) Close() error {
 		return nil
 	}
 
+	s.cancel()
 	s.running = false
-	close(s.doneChan)
-
-	err := s.conn.Close()
-	return err
+	return s.conn.Close()
 }
 
 func (s *ResolvingSimpleSender) Reconnect() {
@@ -120,17 +119,19 @@ func (s *ResolvingSimpleSender) Start() {
 		return
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
 	s.running = true
-	go s.run()
+	go s.run(ctx)
 }
 
-func (s *ResolvingSimpleSender) run() {
+func (s *ResolvingSimpleSender) run(ctx context.Context) {
 	ticker := time.NewTicker(s.reresolveInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-s.doneChan:
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			// reconnect locks/checks running, so no need to do it here
@@ -161,7 +162,6 @@ func NewResolvingSimpleSender(addr string, interval time.Duration) (Sender, erro
 		addrResolved:      addrResolved,
 		addrUnresolved:    addr,
 		reresolveInterval: interval,
-		doneChan:          make(chan struct{}),
 		running:           false,
 	}
 

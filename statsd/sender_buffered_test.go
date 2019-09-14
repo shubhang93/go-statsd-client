@@ -30,7 +30,7 @@ func TestClose(t *testing.T) {
 		flushInterval: 1 * time.Second,
 		sender:        mockSender,
 		buffer:        bytes.NewBuffer(make([]byte, 0, 512)),
-		shutdown:      make(chan chan error),
+		errchan:       make(chan error),
 	}
 
 	sender.Close()
@@ -56,7 +56,7 @@ func TestCloseConcurrent(t *testing.T) {
 		flushInterval: 1 * time.Second,
 		sender:        mockSender,
 		buffer:        bytes.NewBuffer(make([]byte, 0, 512)),
-		shutdown:      make(chan chan error),
+		errchan:       make(chan error),
 	}
 	sender.Start()
 
@@ -85,7 +85,7 @@ func TestCloseDuringSendConcurrent(t *testing.T) {
 		flushInterval: 1 * time.Second,
 		sender:        mockSender,
 		buffer:        bytes.NewBuffer(make([]byte, 0, 512)),
-		shutdown:      make(chan chan error),
+		errchan:       make(chan error),
 	}
 	sender.Start()
 

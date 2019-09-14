@@ -6,6 +6,7 @@ package statsd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -24,9 +25,10 @@ type BufferedSender struct {
 	buffer *bytes.Buffer
 	bufs   chan *bytes.Buffer
 	// lifecycle
-	runmx    sync.RWMutex
-	shutdown chan chan error
-	running  bool
+	runmx   sync.RWMutex
+	cancel  context.CancelFunc
+	errchan chan error
+	running bool
 }
 
 // Send bytes.
@@ -63,10 +65,9 @@ func (s *BufferedSender) Close() error {
 		return nil
 	}
 
-	errChan := make(chan error)
+	s.cancel()
 	s.running = false
-	s.shutdown <- errChan
-	return <-errChan
+	return <-s.errchan
 }
 
 // Start Buffered Sender
@@ -81,7 +82,9 @@ func (s *BufferedSender) Start() {
 
 	s.running = true
 	s.bufs = make(chan *bytes.Buffer, 32)
-	go s.run()
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+	go s.run(ctx)
 }
 
 func (s *BufferedSender) withBufferLock(fn func()) {
@@ -100,33 +103,36 @@ func (s *BufferedSender) swapnqueue() {
 	s.bufs <- ob
 }
 
-func (s *BufferedSender) run() {
+func (s *BufferedSender) run(ctx context.Context) {
 	ticker := time.NewTicker(s.flushInterval)
 	defer ticker.Stop()
 
-	doneChan := make(chan bool)
+	// ctx to wait until buffer empties
+	flushCtx, flushDone := context.WithCancel(context.Background())
 	go func() {
 		for buf := range s.bufs {
 			s.flush(buf)
 			senderPool.Put(buf)
 		}
-		doneChan <- true
+		flushDone()
 	}()
 
 	for {
 		select {
-		case <-ticker.C:
-			s.withBufferLock(func() {
-				s.swapnqueue()
-			})
-		case errChan := <-s.shutdown:
+		case <-ctx.Done():
 			s.withBufferLock(func() {
 				s.swapnqueue()
 			})
 			close(s.bufs)
-			<-doneChan
-			errChan <- s.sender.Close()
+			// wait for buffer to empty
+			<-flushCtx.Done()
+			// propagate any subsender closes
+			s.errchan <- s.sender.Close()
 			return
+		case <-ticker.C:
+			s.withBufferLock(func() {
+				s.swapnqueue()
+			})
 		}
 	}
 }
@@ -185,7 +191,7 @@ func newBufferedSenderWithSender(sender Sender, flushInterval time.Duration, flu
 		flushInterval: flushInterval,
 		sender:        sender,
 		buffer:        senderPool.Get(),
-		shutdown:      make(chan chan error),
+		errchan:       make(chan error),
 	}
 
 	bufSender.Start()

@@ -39,8 +39,7 @@ func (s *SimpleSender) Send(data []byte) (int, error) {
 
 // Close closes the SimpleSender and cleans up.
 func (s *SimpleSender) Close() error {
-	err := s.c.Close()
-	return err
+	return s.c.Close()
 }
 
 // NewSimpleSender returns a new SimpleSender for sending to the supplied

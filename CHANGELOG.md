@@ -2,6 +2,8 @@ Changelog
 =========
 
 ## head
+*   Utilize context for simplifying some internal code. This bumps min go version
+    to go-1.7.
 
 ## 3.2.0 2019-09-21
 *   A new client constructor with "config style" semantics.
